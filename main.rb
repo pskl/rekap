@@ -2,6 +2,7 @@
 require 'optparse'
 require 'github_api'
 require 'prawn'
+require 'date'
 
 options = {}
 OptionParser.new do |opts|
@@ -13,6 +14,10 @@ OptionParser.new do |opts|
 
   opts.on("-p", "--project=NAME", "Project name (GitHub repository)") do |name|
     options[:project_name] = name
+  end
+
+  opts.on("-f", "--font=PATH", "Font file path") do |path|
+    options[:font_path] = path
   end
 
   opts.on("-t", "--gh-token=TOKEN", "GitHub personal access token") do |token|
@@ -59,39 +64,76 @@ def fetch_repo_data(github, repo_name, authenticated_user)
   { pull_requests: pull_requests, issues: issues }
 end
 
-def generate_pdf(repo_name, contributor_name, data, output_path)
+def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
   month_name = Time.now.strftime('%B')
   file_name = "#{repo_name.tr('/', '_')}_#{month_name.downcase}_#{Time.now.year}_#{contributor_name}_rekap.pdf"
   output_file = File.join(output_path, file_name)
 
   Prawn::Document.generate(output_file) do |pdf|
-    pdf.text "GitHub Repository: #{repo_name}", style: :bold
-    pdf.text "Contributor: #{contributor_name}", style: :bold
-    pdf.move_down 20
+    pdf.font font_path if font_path
+    pdf.default_leading = 0.5
+    pdf.font_size 12
+    default_spacing = pdf.font_size / 2
 
-    data[:issues].each_with_index do |issue, index|
-      pdf.start_new_page if index > 0 && index % 2 == 0
+    pdf.text "> Activity summary for #{contributor_name} on #{repo_name} in #{month_name} #{Time.now.year}:", size: 13
+    pdf.move_down default_spacing / 3
 
-      pdf.bounding_box([0, pdf.cursor], width: pdf.bounds.width / 2) do
-        pdf.text "Issue: #{issue.title} (#{issue.state})", style: :bold
-        pdf.move_down 5
-        pdf.text "Assignees: #{issue.assignees.map(&:login).join(', ')}"
-        pdf.move_down 10
+    ruler(8, pdf)
+
+    pdf.move_down default_spacing * 1.5
+    half_width = pdf.bounds.width * 0.5
+    top = pdf.cursor
+
+    pdf.bounding_box([0, pdf.cursor], :width => half_width) do
+      pdf.text "TICKETS", size: pdf.font_size * 1.2
+      ruler(3, pdf)
+      pdf.move_down default_spacing/2
+
+      data[:issues].sort_by { |i| i.number }.each do |issue|
+        pdf.formatted_text [
+          { text: "#{issue.title}", link: "#{issue.html_url}", color: '0000FF' }
+        ]
+        ruler(2, pdf)
+        pdf.move_down default_spacing/2
+
+        pdf.text "number: #{issue.number}"
+        pdf.text "state: #{issue.state}"
+        pdf.text "assignees: #{issue.assignees.map(&:login).join(', ')}"
+
+        pdf.move_down default_spacing * 2.2
       end
+    end
 
-      if corresponding_pr = data[:pull_requests].find { |pr| pr.body.present? && pr.body.include?(issue.html_url) }
-        pdf.bounding_box([pdf.bounds.width / 2, pdf.cursor], width: pdf.bounds.width / 2) do
-          pdf.text "Pull Request: #{corresponding_pr.title} (#{corresponding_pr.state})", style: :bold
-          pdf.move_down 5
-          pdf.text "Reviewer(s): #{corresponding_pr.reviews.to_a.map { |review| review.user.login }.join(', ')}"
-          pdf.move_down 10
-        end
+    pdf.go_to_page(1)
+    pdf.move_cursor_to(top)
+
+    pdf.bounding_box([half_width + default_spacing*2, pdf.cursor], :width => half_width) do
+      pdf.text "PULL REQUESTS", size: pdf.font_size * 1.2
+      ruler(3, pdf)
+      pdf.move_down default_spacing / 2
+
+      data[:pull_requests].sort_by { |pr| pr.number }.each do |pr|
+        pdf.formatted_text [
+          { text: "#{pr.title}", link: "#{pr.html_url}", color: '0000FF' }
+        ]
+        ruler(2, pdf)
+        pdf.move_down default_spacing/2
+
+        pdf.text "number: #{pr.number}"
+        pdf.text "date of opening: #{DateTime.parse(pr.created_at).to_date}"
+        pdf.text "date of closing: #{DateTime.parse(pr.closed_at).to_date}"
+        pdf.text "time stayed open: #{(DateTime.parse(pr.closed_at) - DateTime.parse(pr.created_at)).to_i} days" if pr.closed_at.present?
+
+        pdf.move_down default_spacing * 2.2
       end
-
-      pdf.move_down 20 unless index == data[:issues].length - 1
     end
   end
 end
 
+def ruler(size, pdf)
+  pdf.line_width = size
+  pdf.stroke_horizontal_rule
+end
+
 data = fetch_repo_data(github, options[:project_name], authenticated_user)
-generate_pdf(options[:project_name], authenticated_user.name, data, options[:output_path] || '.')
+generate_pdf(options[:project_name], authenticated_user.name, data, options[:output_path] || '.', options[:font_path])
