@@ -91,7 +91,7 @@ def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
 
       data[:issues].sort_by { |i| i.number }.each do |issue|
         pdf.formatted_text [
-          { text: "#{issue.title}", link: "#{issue.html_url}", color: '0000FF' }
+          { text: "#{issue.title.split.join(" ")}", link: "#{issue.html_url}", color: '0000FF' }
         ]
         ruler(2, pdf)
         pdf.move_down default_spacing/2
@@ -114,16 +114,18 @@ def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
 
       data[:pull_requests].sort_by { |pr| pr.number }.each do |pr|
         pdf.formatted_text [
-          { text: "#{pr.title}", link: "#{pr.html_url}", color: '0000FF' }
+          { text: "#{pr.title.split.join(" ")}", link: "#{pr.html_url}", color: '0000FF' }
         ]
         ruler(2, pdf)
         pdf.move_down default_spacing/2
 
         pdf.text "number: #{pr.number}"
         pdf.text "date of opening: #{DateTime.parse(pr.created_at).to_date}"
-        pdf.text "date of closing: #{DateTime.parse(pr.closed_at).to_date}"
-        pdf.text "time stayed open: #{(DateTime.parse(pr.closed_at) - DateTime.parse(pr.created_at)).to_i} days" if pr.closed_at.present?
 
+        if pr.closed_at.present?
+          pdf.text "date of closing: #{DateTime.parse(pr.closed_at).to_date}"
+          pdf.text "time stayed open: #{(DateTime.parse(pr.closed_at) - DateTime.parse(pr.created_at)).to_i} days"
+        end
         pdf.move_down default_spacing * 2.2
       end
     end
