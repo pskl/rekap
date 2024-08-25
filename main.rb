@@ -1,8 +1,6 @@
-#!/usr/bin/env ruby
-require 'optparse'
-require 'github_api'
-require 'prawn'
+Bundler.require()
 require 'date'
+require 'optparse'
 
 options = {}
 OptionParser.new do |opts|
