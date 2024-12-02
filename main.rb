@@ -40,14 +40,14 @@ end
 
 def fetch_repo_data(github, repo_name, authenticated_user)
   user, repo = repo_name.split('/')
-  current_month = Time.now.month
+  last_month = Time.now.month - 1
   current_year = Time.now.year
 
   pull_requests = github.pull_requests.list(
     user, repo, state: 'all', sort: 'created', direction: 'desc'
   ).select do |pr|
     created_at = DateTime.parse(pr.created_at)
-    created_at.month == current_month && created_at.year == current_year &&
+    created_at.month == last_month && created_at.year == current_year &&
       (pr.user.login == authenticated_user.login || pr.merged_by&.login == authenticated_user.login || (pr.reviews.present? && pr.reviews.any? { |review| review.user.login == authenticated_user.login }))
   end
 
@@ -55,7 +55,7 @@ def fetch_repo_data(github, repo_name, authenticated_user)
     user, repo, state: 'all', sort: 'created', direction: 'desc'
   ).select do |issue|
     created_at = DateTime.parse(issue.created_at)
-    created_at.month == current_month && created_at.year == current_year &&
+    created_at.month == last_month && created_at.year == current_year &&
       (issue.user.login == authenticated_user.login || issue.assignees.any? { |assignee| assignee.login == authenticated_user.login })
   end
 
@@ -63,7 +63,7 @@ def fetch_repo_data(github, repo_name, authenticated_user)
 end
 
 def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
-  month_name = Time.now.strftime('%B')
+  month_name = (Time.now - 2592000).strftime('%B')
   file_name = "#{repo_name.tr('/', '_')}_#{month_name.downcase}_#{Time.now.year}_#{contributor_name}_rekap.pdf"
   output_file = File.join(output_path, file_name)
 
