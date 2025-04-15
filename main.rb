@@ -72,31 +72,47 @@ def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
     pdf.default_leading = 0.5
     pdf.font_size 12
     default_spacing = pdf.font_size / 2
+    max_ruler_size = 4
 
     pdf.text "> Activity summary for #{contributor_name} on #{repo_name} in #{month_name} #{Time.now.year}:", size: 13
     pdf.move_down default_spacing / 3
 
-    ruler(8, pdf)
+    ruler(max_ruler_size, pdf)
 
     pdf.move_down default_spacing * 1.5
     half_width = pdf.bounds.width * 0.5
     top = pdf.cursor
 
+    left_data, right_data = if data[:pull_requests].length >= data[:issues].length
+      [{title: "PULL REQUESTS", items: data[:pull_requests]}, {title: "TICKETS", items: data[:issues]}]
+    else
+      [{title: "TICKETS", items: data[:issues]}, {title: "PULL REQUESTS", items: data[:pull_requests]}]
+    end
+
     pdf.bounding_box([0, pdf.cursor], :width => half_width) do
-      pdf.text "TICKETS", size: pdf.font_size * 1.2
-      ruler(3, pdf)
+      pdf.text left_data[:title], size: pdf.font_size * 1.2
+      ruler(max_ruler_size * 0.375, pdf)
       pdf.move_down default_spacing/2
 
-      data[:issues].sort_by { |i| i.number }.each do |issue|
+      left_data[:items].sort_by { |item| item.number }.each do |item|
         pdf.formatted_text [
-          { text: "#{issue.title.split.join(" ")}", link: "#{issue.html_url}", color: '0000FF' }
+          { text: "#{item.title.split.join(" ")}", link: "#{item.html_url}", color: '0000FF' }
         ]
-        ruler(2, pdf)
+        ruler(max_ruler_size * 0.25, pdf)
         pdf.move_down default_spacing/2
 
-        pdf.text "number: #{issue.number}"
-        pdf.text "state: #{issue.state}"
-        pdf.text "assignees: #{issue.assignees.map(&:login).join(', ')}"
+        if item.respond_to?(:assignees)
+          pdf.text "number: #{item.number}"
+          pdf.text "state: #{item.state}"
+          pdf.text "assignees: #{item.assignees.map(&:login).join(', ')}"
+        else
+          pdf.text "number: #{item.number}"
+          pdf.text "date of opening: #{DateTime.parse(item.created_at).to_date}"
+          if item.closed_at.present?
+            pdf.text "date of closing: #{DateTime.parse(item.closed_at).to_date}"
+            pdf.text "time stayed open: #{(DateTime.parse(item.closed_at) - DateTime.parse(item.created_at)).to_i} days"
+          end
+        end
 
         pdf.move_down default_spacing * 2.2
       end
@@ -106,28 +122,35 @@ def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
     pdf.move_cursor_to(top)
 
     pdf.bounding_box([half_width + default_spacing*2, pdf.cursor], :width => half_width) do
-      pdf.text "PULL REQUESTS", size: pdf.font_size * 1.2
-      ruler(3, pdf)
+      pdf.text right_data[:title], size: pdf.font_size * 1.2
+      ruler(max_ruler_size * 0.375, pdf)
       pdf.move_down default_spacing / 2
 
-      data[:pull_requests].sort_by { |pr| pr.number }.each do |pr|
+      right_data[:items].sort_by { |item| item.number }.each do |item|
         pdf.formatted_text [
-          { text: "#{pr.title.split.join(" ")}", link: "#{pr.html_url}", color: '0000FF' }
+          { text: "#{item.title.split.join(" ")}", link: "#{item.html_url}", color: '0000FF' }
         ]
-        ruler(2, pdf)
+        ruler(max_ruler_size * 0.25, pdf)
         pdf.move_down default_spacing/2
 
-        pdf.text "number: #{pr.number}"
-        pdf.text "date of opening: #{DateTime.parse(pr.created_at).to_date}"
-
-        if pr.closed_at.present?
-          pdf.text "date of closing: #{DateTime.parse(pr.closed_at).to_date}"
-          pdf.text "time stayed open: #{(DateTime.parse(pr.closed_at) - DateTime.parse(pr.created_at)).to_i} days"
+        if item.respond_to?(:assignees)
+          pdf.text "number: #{item.number}"
+          pdf.text "state: #{item.state}"
+          pdf.text "assignees: #{item.assignees.map(&:login).join(', ')}"
+        else
+          pdf.text "number: #{item.number}"
+          pdf.text "date of opening: #{DateTime.parse(item.created_at).to_date}"
+          if item.closed_at.present?
+            pdf.text "date of closing: #{DateTime.parse(item.closed_at).to_date}"
+            pdf.text "time stayed open: #{(DateTime.parse(item.closed_at) - DateTime.parse(item.created_at)).to_i} days"
+          end
         end
+
         pdf.move_down default_spacing * 2.2
       end
     end
   end
+  puts "rekap generated: #{file_name}"
 end
 
 def ruler(size, pdf)
