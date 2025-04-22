@@ -4,35 +4,7 @@ require 'optparse'
 require_relative 'lib/histogram'
 require_relative 'lib/options'
 require_relative 'lib/utils'
-
-options = Options.parse
-
-github = Github.new(oauth_token: options[:gh_token], auto_pagination: true)
-authenticated_user = github.users.get
-
-def fetch_repo_data(github, repo_name, authenticated_user)
-  user, repo = repo_name.split('/')
-  last_month = Time.now.month - 1
-  current_year = Time.now.year
-
-  pull_requests = github.pull_requests.list(
-    user, repo, state: 'all', sort: 'created', direction: 'desc'
-  ).select do |pr|
-    created_at = DateTime.parse(pr.created_at)
-    created_at.month == last_month && created_at.year == current_year &&
-      (pr.user.login == authenticated_user.login || pr.merged_by&.login == authenticated_user.login || (pr.reviews.present? && pr.reviews.any? { |review| review.user.login == authenticated_user.login }))
-  end
-
-  issues = github.issues.list(
-    user, repo, state: 'all', sort: 'created', direction: 'desc'
-  ).select do |issue|
-    created_at = DateTime.parse(issue.created_at)
-    created_at.month == last_month && created_at.year == current_year &&
-      (issue.user.login == authenticated_user.login || issue.assignees.any? { |assignee| assignee.login == authenticated_user.login })
-  end
-
-  { pull_requests: pull_requests, issues: issues }
-end
+require_relative 'lib/github_service'
 
 def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
   month = Date.today.prev_month
@@ -52,6 +24,7 @@ def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
     pdf.font_size 12
     default_spacing = pdf.font_size / 2.2
     max_ruler_size = 3
+    max_title_length = 46
 
     pdf.text "> #{title} (#{business_days.length} days):", size: 13
     pdf.move_down default_spacing * 0.6
@@ -71,8 +44,8 @@ def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
     top = pdf.cursor
 
     sections = [
-      { title: "pull requests", items: data[:pull_requests] },
-      { title: "tickets", items: data[:issues] }
+      { title: "> pull requests opened (#{data[:pull_requests].count})", items: data[:pull_requests] },
+      { title: "> tickets processed (#{data[:issues].count})", items: data[:issues] }
     ].sort_by { |section| -section[:items].length }
 
     left_data, right_data = sections
@@ -83,16 +56,18 @@ def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
       pdf.move_down default_spacing/2
 
       left_data[:items].sort_by { |item| item.number }.each do |item|
-        pdf.text "#{item.title.split.join(" ")}", link: item.html_url
+        truncated_title = truncate_text(item.title, max_title_length)
+        pdf.text "<link href='#{item.html_url}'>##{item.number} - #{truncated_title}</link>",
+          inline_format: true
         ruler(max_ruler_size * 0.25, pdf)
         pdf.move_down default_spacing/2
 
         if item.respond_to?(:assignees)
-          pdf.text "number: #{item.number}"
           pdf.text "state: #{item.state}"
-          pdf.text "assignees: #{item.assignees.map(&:login).join(', ')}"
+          if item.assignees.any?
+            pdf.text "assignees: #{item.assignees.map(&:login).join(', ')}"
+          end
         else
-          pdf.text "number: #{item.number}"
           pdf.text "date of opening: #{DateTime.parse(item.created_at).to_date}"
           if item.closed_at.present?
             pdf.text "date of closing: #{DateTime.parse(item.closed_at).to_date}"
@@ -113,16 +88,18 @@ def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
       pdf.move_down default_spacing/2
 
       right_data[:items].sort_by { |item| item.number }.each do |item|
-        pdf.text "#{item.title.split.join(" ")}", link: item.html_url
+        truncated_title = truncate_text(item.title, max_title_length)
+        pdf.text "<link href='#{item.html_url}'>##{item.number} #{truncated_title}</link>",
+          inline_format: true
         ruler(max_ruler_size * 0.25, pdf)
         pdf.move_down default_spacing/2
 
         if item.respond_to?(:assignees)
-          pdf.text "number: #{item.number}"
           pdf.text "state: #{item.state}"
-          pdf.text "assignees: #{item.assignees.map(&:login).join(', ')}"
+          if item.assignees.any?
+            pdf.text "assignees: #{item.assignees.map(&:login).join(', ')}"
+          end
         else
-          pdf.text "number: #{item.number}"
           pdf.text "date of opening: #{DateTime.parse(item.created_at).to_date}"
           if item.closed_at.present?
             pdf.text "date of closing: #{DateTime.parse(item.closed_at).to_date}"
@@ -137,5 +114,12 @@ def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
   puts "-> rekap generated: #{file_name}"
 end
 
-data = fetch_repo_data(github, options[:project_name], authenticated_user)
+options = Options.parse
+
+github = Github.new(oauth_token: options[:gh_token], auto_pagination: true)
+authenticated_user = github.users.get
+
+github_service = GithubService.new(github, authenticated_user)
+data = github_service.fetch_repo_data(options[:project_name])
+
 generate_pdf(options[:project_name], authenticated_user.name, data, options[:output_path] || '.', options[:font_path])

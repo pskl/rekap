@@ -12,6 +12,11 @@ def ruler(size, pdf)
   pdf.stroke_horizontal_rule
 end
 
+def truncate_text(text, max_length)
+  text = text.split.join(" ")
+  text.length > max_length ? "#{text[0..max_length-3]}..." : text
+end
+
 class Object
   def present?
     !nil? && !empty?
