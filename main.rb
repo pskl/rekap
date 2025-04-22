@@ -3,17 +3,12 @@ require 'date'
 require 'optparse'
 require_relative 'lib/histogram'
 require_relative 'lib/options'
+require_relative 'lib/utils'
 
 options = Options.parse
 
 github = Github.new(oauth_token: options[:gh_token], auto_pagination: true)
 authenticated_user = github.users.get
-
-class Object
-  def present?
-    !nil? && !empty?
-  end
-end
 
 def fetch_repo_data(github, repo_name, authenticated_user)
   user, repo = repo_name.split('/')
@@ -49,14 +44,16 @@ def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
   file_name = "#{repo_name.tr('/', '_')}_#{month_name.downcase}_#{Time.now.year}_#{contributor_name}_rekap.pdf"
   output_file = File.join(output_path, file_name)
 
-  Prawn::Document.generate(output_file) do |pdf|
+  title = "Activity summary for #{contributor_name} on #{repo_name} in #{month_name} #{Time.now.year}"
+
+  Prawn::Document.generate(output_file, info: metadata(title, contributor_name)) do |pdf|
     pdf.font font_path if font_path
     pdf.default_leading = 0.5
     pdf.font_size 12
-    default_spacing = pdf.font_size / 2
+    default_spacing = pdf.font_size / 2.2
     max_ruler_size = 3
 
-    pdf.text "> Activity summary for #{contributor_name} on #{repo_name} in #{month_name} #{Time.now.year} (#{business_days.length} days):", size: 13
+    pdf.text "> #{title} (#{business_days.length} days):", size: 13
     pdf.move_down default_spacing * 0.6
 
     pdf.font_size 9 do
@@ -103,7 +100,7 @@ def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
           end
         end
 
-        pdf.move_down default_spacing * 2.2
+        pdf.move_down default_spacing * 1.5
       end
     end
 
@@ -137,12 +134,7 @@ def generate_pdf(repo_name, contributor_name, data, output_path, font_path)
       end
     end
   end
-  puts "rekap generated: #{file_name}"
-end
-
-def ruler(size, pdf)
-  pdf.line_width = size
-  pdf.stroke_horizontal_rule
+  puts "-> rekap generated: #{file_name}"
 end
 
 data = fetch_repo_data(github, options[:project_name], authenticated_user)
