@@ -22,6 +22,11 @@ class Options
       opts.on("-t", "--gh-token=TOKEN", "GitHub personal access token") do |token|
         options[:gh_token] = token
       end
+
+      opts.on('--days-off=DATES', 'Comma-separated list of dates to exclude (YYYY-MM-DD format)') do |dates|
+        options[:days_off] = dates.split(',').map { |date| Date.parse(date) }
+      end
+
     end.parse!
 
     unless options[:project_name] && options[:gh_token]
