@@ -6,35 +6,35 @@ class GithubService
     @authenticated_user = authenticated_user
   end
 
-  def fetch_repo_data(repo_name)
+  def fetch_repo_data(repo_name, month_num)
     user, repo = repo_name.split('/')
-    last_month = Time.now.month - 1
-    current_year = Time.now.year
+    target_month = month_num
+    target_year = Date.today.year
 
     {
-      pull_requests: fetch_pull_requests(user, repo, last_month, current_year),
-      issues: fetch_issues(user, repo, last_month, current_year)
+      pull_requests: fetch_pull_requests(user, repo, target_month, target_year),
+      issues: fetch_issues(user, repo, target_month, target_year)
     }
   end
 
   private
 
-  def fetch_pull_requests(user, repo, last_month, current_year)
+  def fetch_pull_requests(user, repo, target_month, target_year)
     @github.pull_requests.list(
       user, repo, state: 'all', sort: 'created', direction: 'desc'
     ).select do |pr|
       created_at = DateTime.parse(pr.created_at)
-      created_at.month == last_month && created_at.year == current_year &&
+      created_at.month == target_month && created_at.year == target_year &&
         user_involved_in_pr?(pr)
     end
   end
 
-  def fetch_issues(user, repo, last_month, current_year)
+  def fetch_issues(user, repo, target_month, target_year)
     @github.issues.list(
       user, repo, state: 'all', sort: 'created', direction: 'desc'
     ).select do |issue|
       created_at = DateTime.parse(issue.created_at)
-      created_at.month == last_month && created_at.year == current_year &&
+      created_at.month == target_month && created_at.year == target_year &&
         user_involved_in_issue?(issue)
     end
   end

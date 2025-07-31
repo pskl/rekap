@@ -6,17 +6,18 @@ require_relative 'lib/options'
 require_relative 'lib/utils'
 require_relative 'lib/github_service'
 
-def generate_pdf(repo_name, contributor_name, data, output_path, font_path, days_off = [])
-  month = Date.today.prev_month
+def generate_pdf(repo_name, contributor_name, data, output_path, font_path, days_off = [], month_num)
+  current_year = Date.today.year
+  month = Date.new(current_year, month_num, 1)
   month_name = month.strftime('%B')
   start_date = Date.new(month.year, month.month, 1)
   end_date = Date.new(month.year, month.month, -1)
   business_days = (start_date..end_date).select { |d| (1..5).include?(d.wday) && !days_off.include?(d) }
 
-  file_name = "#{repo_name.tr('/', '_')}_#{month_name.downcase}_#{Time.now.year}_#{contributor_name}_rekap.pdf"
+  file_name = "#{repo_name.tr('/', '_')}_#{month_name.downcase}_#{month.year}_#{contributor_name}_rekap.pdf"
   output_file = File.join(output_path, file_name)
 
-  title = "Activity summary for #{contributor_name} on #{repo_name} in #{month_name} #{Time.now.year}"
+  title = "Activity summary for #{contributor_name} on #{repo_name} in #{month_name} #{month.year}"
 
   Prawn::Document.generate(output_file, info: metadata(title, contributor_name)) do |pdf|
     pdf.font font_path if font_path
@@ -119,7 +120,9 @@ options = Options.parse
 github = Github.new(oauth_token: options[:gh_token], auto_pagination: true)
 authenticated_user = github.users.get
 
-github_service = GithubService.new(github, authenticated_user)
-data = github_service.fetch_repo_data(options[:project_name])
+month = options[:month] || Date.today.prev_month.month
 
-generate_pdf(options[:project_name], authenticated_user.name, data, options[:output_path] || '.', options[:font_path], options[:days_off] || [])
+github_service = GithubService.new(github, authenticated_user)
+data = github_service.fetch_repo_data(options[:project_name], month)
+
+generate_pdf(options[:project_name], authenticated_user.name, data, options[:output_path] || '.', options[:font_path], options[:days_off] || [], month)
