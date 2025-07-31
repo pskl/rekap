@@ -115,14 +115,18 @@ def generate_pdf(repo_name, contributor_name, data, output_path, font_path, days
   puts "-> rekap generated: #{file_name}"
 end
 
-options = Options.parse
+def main
+  options = Options.parse
 
-github = Github.new(oauth_token: options[:gh_token], auto_pagination: true)
-authenticated_user = github.users.get
+  github = Github.new(oauth_token: options[:gh_token], auto_pagination: true)
+  authenticated_user = github.users.get
 
-month = options[:month] || Date.today.prev_month.month
+  month = options[:month] || Date.today.prev_month.month
 
-github_service = GithubService.new(github, authenticated_user)
-data = github_service.fetch_repo_data(options[:project_name], month)
+  github_service = GithubService.new(github, authenticated_user)
+  data = github_service.fetch_repo_data(options[:project_name], month)
 
-generate_pdf(options[:project_name], authenticated_user.name, data, options[:output_path] || '.', options[:font_path], options[:days_off] || [], month)
+  generate_pdf(options[:project_name], authenticated_user.name, data, options[:output_path] || '.', options[:font_path], options[:days_off] || [], month)
+end
+
+main if __FILE__ == $0
