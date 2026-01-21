@@ -31,6 +31,22 @@ class Options
         options[:days_on] = dates.split(',').map { |date| Date.parse(date) }
       end
 
+      opts.on('--repo1=PATH', 'Path to first local git repository') do |path|
+        options[:repo1] = path
+      end
+
+      opts.on('--repo2=PATH', 'Path to second local git repository (optional)') do |path|
+        options[:repo2] = path
+      end
+
+      opts.on('--email-author=EMAIL', 'Email address of commit author (for local mode)') do |email|
+        options[:email_author] = email
+      end
+
+      opts.on('--title=TITLE', 'Custom title to use in PDF and filename (overrides project/repo name)') do |title|
+        options[:title] = title
+      end
+
       opts.on("-m", "--month=NUMBER", "Month number (1-12, defaults to previous month)") do |month|
         month_num = month.to_i
         if month_num < 1 || month_num > 12
@@ -42,10 +58,26 @@ class Options
 
     end.parse!
 
-    unless options[:project_name] && options[:gh_token]
-      puts "Error: Project name and GitHub token are required."
-      puts "Usage: see README.md for usage"
+    local_params = options[:repo1] || options[:email_author]
+    github_params = options[:project_name] || options[:gh_token]
+
+    if local_params && github_params
+      puts "Error: Cannot mix GitHub mode (--project, --gh-token) with local mode (--repo1, --email-author)"
       exit 1
+    end
+
+    if local_params
+      unless options[:repo1] && options[:email_author]
+        puts "Error: Local mode requires --repo1 and --email-author"
+        exit 1
+      end
+      options[:mode] = "local"
+    else
+      unless options[:project_name] && options[:gh_token]
+        puts "Error: GitHub mode requires --project and --gh-token"
+        exit 1
+      end
+      options[:mode] = "github"
     end
 
     options

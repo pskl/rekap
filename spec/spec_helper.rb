@@ -3,7 +3,8 @@
 require_relative '../lib/histogram'
 require_relative '../lib/options'
 require_relative '../lib/utils'
-require_relative '../lib/github_service'
+require_relative '../lib/git/github'
+require_relative '../lib/git/local'
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
