@@ -49,8 +49,8 @@ RSpec.describe GitService do
 
         expect(data[:pull_requests].length).to eq(2)
         expect(data[:issues].length).to eq(1)
-        expect(data[:pr_title]).to eq('> repo commits')
-        expect(data[:issue_title]).to eq('> repo commits (continued)')
+        expect(data[:pr_title]).to eq('> repo commits (2)')
+        expect(data[:issue_title]).to eq('> repo commits continued (1)')
       end
 
       it 'handles single commit' do
@@ -87,8 +87,8 @@ RSpec.describe GitService do
 
         expect(data[:pull_requests]).to eq(repo1_commits)
         expect(data[:issues]).to eq(repo2_commits)
-        expect(data[:pr_title]).to eq('> repo commits')
-        expect(data[:issue_title]).to eq('> repo2 commits')
+        expect(data[:pr_title]).to eq('> repo commits (2)')
+        expect(data[:issue_title]).to eq('> repo2 commits (3)')
       end
     end
   end

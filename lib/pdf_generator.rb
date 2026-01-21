@@ -135,7 +135,7 @@ class PdfGenerator
 
     render_item_metadata(pdf, item)
 
-    spacing_multiplier = is_right_column ? 2.2 : 1.5
+    spacing_multiplier = (is_right_column && github_mode?) ? 2.2 : 1.5
     pdf.move_down default_spacing * spacing_multiplier
   end
 

@@ -23,16 +23,18 @@ class GitService
       {
         pull_requests: repo1_commits,
         issues: repo2_commits,
-        pr_title: "> #{repo1_name} commits",
-        issue_title: "> #{repo2_name} commits"
+        pr_title: "> #{repo1_name} commits (#{repo1_commits.count})",
+        issue_title: "> #{repo2_name} commits (#{repo2_commits.count})"
       }
     else
       mid = (repo1_commits.length / 2.0).ceil
+      left_commits = repo1_commits[0...mid]
+      right_commits = repo1_commits[mid..-1] || []
       {
-        pull_requests: repo1_commits[0...mid],
-        issues: repo1_commits[mid..-1] || [],
-        pr_title: "> #{repo1_name} commits",
-        issue_title: "> #{repo1_name} commits (continued)"
+        pull_requests: left_commits,
+        issues: right_commits,
+        pr_title: "> #{repo1_name} commits (#{left_commits.count})",
+        issue_title: "> #{repo1_name} commits continued (#{right_commits.count})"
       }
     end
   end
