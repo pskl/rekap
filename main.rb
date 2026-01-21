@@ -6,13 +6,18 @@ require_relative 'lib/options'
 require_relative 'lib/utils'
 require_relative 'lib/github_service'
 
-def generate_pdf(repo_name, contributor_name, data, output_path, font_path, days_off = [], month_num)
+def generate_pdf(repo_name, contributor_name, data, output_path, font_path, days_off = [], days_on = [], month_num)
   current_year = Date.today.year
   month = Date.new(current_year, month_num, 1)
   month_name = month.strftime('%B')
   start_date = Date.new(month.year, month.month, 1)
   end_date = Date.new(month.year, month.month, -1)
-  business_days = (start_date..end_date).select { |d| (1..5).include?(d.wday) && !days_off.include?(d) }
+
+  business_days = if days_on.any?
+    days_on.select { |d| d >= start_date && d <= end_date }
+  else
+    (start_date..end_date).select { |d| (1..5).include?(d.wday) && !days_off.include?(d) }
+  end
 
   file_name = "#{repo_name.tr('/', '_')}_#{month_name.downcase}_#{month.year}_#{contributor_name}_rekap.pdf"
   output_file = File.join(output_path, file_name)
@@ -126,7 +131,7 @@ def main
   github_service = GithubService.new(github, authenticated_user)
   data = github_service.fetch_repo_data(options[:project_name], month)
 
-  generate_pdf(options[:project_name], authenticated_user.name, data, options[:output_path] || '.', options[:font_path], options[:days_off] || [], month)
+  generate_pdf(options[:project_name], authenticated_user.name, data, options[:output_path] || '.', options[:font_path], options[:days_off] || [], options[:days_on] || [], month)
 end
 
 main if __FILE__ == $0

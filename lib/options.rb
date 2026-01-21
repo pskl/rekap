@@ -27,6 +27,10 @@ class Options
         options[:days_off] = dates.split(',').map { |date| Date.parse(date) }
       end
 
+      opts.on('--days-on=DATES', 'Comma-separated list of dates worked (YYYY-MM-DD format)') do |dates|
+        options[:days_on] = dates.split(',').map { |date| Date.parse(date) }
+      end
+
       opts.on("-m", "--month=NUMBER", "Month number (1-12, defaults to previous month)") do |month|
         month_num = month.to_i
         if month_num < 1 || month_num > 12
