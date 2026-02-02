@@ -39,7 +39,7 @@ class PdfGenerator
 
     title = "Activity summary for #{@contributor_name} on #{@repo_name} in #{month_name} #{month.year}"
 
-    Prawn::Document.generate(output_file, info: metadata(title, @contributor_name)) do |pdf|
+    Prawn::Document.generate(output_file, info: metadata(title, @contributor_name), margin: 15) do |pdf|
       setup_document(pdf)
       render_header(pdf, title, business_days)
       render_histogram(pdf, business_days, month)
