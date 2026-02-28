@@ -114,15 +114,29 @@ class PdfGenerator
   end
 
   def render_column(pdf, column_data, x_position, width, top_position, default_spacing, is_right_column = false)
-    pdf.bounding_box([x_position, top_position], width: width) do
+    offset = pdf.bounds.height - top_position
+    margin_bottom = pdf.bounds.absolute_bottom
+    pdf.bounding_box([x_position, pdf.bounds.height], width: width) do
+      pdf.move_down offset
       pdf.text column_data[:title], size: pdf.font_size * 1.2
       ruler(MAX_RULER_SIZE * 0.375, pdf)
       pdf.move_down default_spacing / 2
 
       column_data[:items].sort_by { |item| item.number }.each do |item|
+        pdf.bounds.move_past_bottom if pdf.y - margin_bottom < item_height(pdf, item, default_spacing)
         render_item(pdf, item, default_spacing, is_right_column)
       end
     end
+  end
+
+  def item_height(pdf, item, default_spacing)
+    line_height = pdf.font_size + 4
+    metadata_lines = if item.respond_to?(:assignees)
+      item.assignees.any? ? 2 : 1
+    else
+      item.closed_at.present? ? 3 : 1
+    end
+    (1 + metadata_lines) * line_height + default_spacing * 3
   end
 
   def render_item(pdf, item, default_spacing, is_right_column)
