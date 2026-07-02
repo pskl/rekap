@@ -52,7 +52,7 @@ RSpec.describe PdfGenerator do
         allow(pdf).to receive(:text)
         allow(pdf).to receive(:move_down)
         allow(pdf).to receive(:cursor).and_return(500)
-        allow(pdf).to receive(:bounds).and_return(double(width: 600))
+        allow(pdf).to receive(:bounds).and_return(double(width: 600, height: 800, absolute_bottom: 0))
         allow(pdf).to receive(:bounding_box)
         allow(pdf).to receive(:go_to_page)
         allow(pdf).to receive(:move_cursor_to)
@@ -71,7 +71,7 @@ RSpec.describe PdfGenerator do
       expected_filename = 'test_repo_june_2026_John Doe_rekap.pdf'
       expected_filepath = File.join(output_path, expected_filename)
 
-      expect(Prawn::Document).to receive(:generate).with(expected_filepath, info: anything)
+      expect(Prawn::Document).to receive(:generate).with(expected_filepath, info: anything, margin: 15)
 
       generator.generate
     end

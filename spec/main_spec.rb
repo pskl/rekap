@@ -32,7 +32,7 @@ RSpec.describe 'main.rb' do
     end
 
     it 'generates PDF with correct filename' do
-      expect(Prawn::Document).to receive(:generate).with(expected_filepath, info: anything)
+      expect(Prawn::Document).to receive(:generate).with(expected_filepath, info: anything, margin: 15)
       
       generate_pdf(repo_name, contributor_name, data, output_path, font_path, days_off, days_on, month_num)
     end
