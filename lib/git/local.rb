@@ -61,6 +61,7 @@ class GitService
 
     stdout, stderr, status = Open3.capture3(
       'git', '-C', repo_path, 'log',
+      '--branches',
       "--author=#{@email_author}",
       "--since=#{start_date}",
       "--until=#{end_date}",
