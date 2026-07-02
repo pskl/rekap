@@ -68,7 +68,7 @@ class PdfGenerator
   def render_header(pdf, title, business_days)
     default_spacing = pdf.font_size / 2.2
 
-    pdf.text "> #{title} (#{business_days.length} days):", size: DEFAULT_TITLE_SIZE
+    pdf.text "> #{title} (#{business_days.length} days or #{business_days.length * 8}h):", size: DEFAULT_TITLE_SIZE
     pdf.move_down default_spacing * 0.6
 
     pdf.font_size DEFAULT_SUBTITLE_SIZE do
