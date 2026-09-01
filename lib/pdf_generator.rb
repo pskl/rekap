@@ -11,7 +11,6 @@ class PdfGenerator
   DEFAULT_TITLE_SIZE = 13
   DEFAULT_SUBTITLE_SIZE = 9
   MAX_RULER_SIZE = 3
-  MAX_TITLE_LENGTH = 46
 
   def initialize(repo_name, contributor_name, data, output_path, font_path, days_off, days_on, month_num, mode)
     @repo_name = repo_name
@@ -140,9 +139,10 @@ class PdfGenerator
   end
 
   def render_item(pdf, item, default_spacing, is_right_column)
-    truncated_title = truncate_text(item.title, MAX_TITLE_LENGTH)
     separator = is_right_column ? " " : " - "
-    pdf.text "<link href='#{item.html_url}'>##{item.number}#{separator}#{truncated_title}</link>",
+    prefix = "##{item.number}#{separator}"
+    truncated_title = truncate_text(pdf, item.title, pdf.bounds.width - pdf.width_of(prefix))
+    pdf.text "<link href='#{item.html_url}'>#{prefix}#{truncated_title}</link>",
       inline_format: true
     ruler(MAX_RULER_SIZE * 0.25, pdf)
     pdf.move_down default_spacing / 2

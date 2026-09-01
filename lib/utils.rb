@@ -12,9 +12,16 @@ def ruler(size, pdf)
   pdf.stroke_horizontal_rule
 end
 
-def truncate_text(text, max_length)
+def truncate_text(pdf, text, available_width)
   text = text.split.join(" ")
-  text.length > max_length ? "#{text[0..max_length-3]}..." : text
+  return text if pdf.width_of(text) <= available_width
+
+  ellipsis = "..."
+  budget = available_width - pdf.width_of(ellipsis)
+  truncated = text
+  truncated = truncated[0...-1] while truncated.length > 1 && pdf.width_of(truncated) > budget
+
+  "#{truncated.rstrip}#{ellipsis}"
 end
 
 class Object
