@@ -76,7 +76,7 @@ RSpec.describe GitService do
     context 'with two repos' do
       let(:repo2_path) { '/path/to/repo2' }
 
-      it 'assigns commits to separate columns' do
+      it 'assigns the repo with the most commits to the left column' do
         repo1_commits = [double(number: 1), double(number: 2)]
         repo2_commits = [double(number: 3), double(number: 4), double(number: 5)]
 
@@ -85,10 +85,23 @@ RSpec.describe GitService do
 
         data = service.fetch_repo_data(repo_path, repo2_path, month)
 
-        expect(data[:pull_requests]).to eq(repo1_commits)
-        expect(data[:issues]).to eq(repo2_commits)
-        expect(data[:pr_title]).to eq('> repo commits (2)')
-        expect(data[:issue_title]).to eq('> repo2 commits (3)')
+        expect(data[:pull_requests]).to eq(repo2_commits)
+        expect(data[:issues]).to eq(repo1_commits)
+        expect(data[:pr_title]).to eq('> repo2 commits (3)')
+        expect(data[:issue_title]).to eq('> repo commits (2)')
+      end
+
+      it 'keeps the first repo on the left when both have the same number of commits' do
+        repo1_commits = [double(number: 1)]
+        repo2_commits = [double(number: 2)]
+
+        allow(service).to receive(:fetch_commits).with(repo_path, month, anything).and_return(repo1_commits)
+        allow(service).to receive(:fetch_commits).with(repo2_path, month, anything).and_return(repo2_commits)
+
+        data = service.fetch_repo_data(repo_path, repo2_path, month)
+
+        expect(data[:pr_title]).to eq('> repo commits (1)')
+        expect(data[:issue_title]).to eq('> repo2 commits (1)')
       end
     end
   end

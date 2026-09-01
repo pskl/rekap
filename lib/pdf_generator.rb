@@ -122,7 +122,7 @@ class PdfGenerator
       ruler(MAX_RULER_SIZE * 0.375, pdf)
       pdf.move_down default_spacing / 2
 
-      column_data[:items].sort_by { |item| item.number }.each do |item|
+      column_data[:items].sort_by { |item| DateTime.parse(item.created_at) }.each do |item|
         pdf.bounds.move_past_bottom if pdf.y - margin_bottom < item_height(pdf, item, default_spacing)
         render_item(pdf, item, default_spacing, is_right_column)
       end

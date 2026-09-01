@@ -20,11 +20,19 @@ class GitService
     if repo2_path
       repo2_commits = fetch_commits(repo2_path, target_month, target_year)
       repo2_name = File.basename(File.expand_path(repo2_path))
+
+      left, right = [[repo1_name, repo1_commits], [repo2_name, repo2_commits]]
+        .each_with_index
+        .sort_by { |(_name, commits), index| [-commits.count, index] }
+        .map(&:first)
+      left_name, left_commits = left
+      right_name, right_commits = right
+
       {
-        pull_requests: repo1_commits,
-        issues: repo2_commits,
-        pr_title: "> #{repo1_name} commits (#{repo1_commits.count})",
-        issue_title: "> #{repo2_name} commits (#{repo2_commits.count})"
+        pull_requests: left_commits,
+        issues: right_commits,
+        pr_title: "> #{left_name} commits (#{left_commits.count})",
+        issue_title: "> #{right_name} commits (#{right_commits.count})"
       }
     else
       mid = (repo1_commits.length / 2.0).ceil
@@ -63,8 +71,6 @@ class GitService
       'git', '-C', repo_path, 'log',
       '--branches',
       "--author=#{@email_author}",
-      "--since=#{start_date}",
-      "--until=#{end_date}",
       '--format=%H|%s|%aI'
     )
 
@@ -74,8 +80,11 @@ class GitService
       exit 1
     end
 
-    commits = stdout.lines.map do |line|
+    commits = stdout.lines.filter_map do |line|
       hash, subject, date = line.strip.split('|', 3)
+      authored_on = Date.parse(date)
+      next if authored_on < start_date || authored_on > end_date
+
       Commit.new(
         number: hash[0..6],
         title: subject,
@@ -85,7 +94,7 @@ class GitService
       )
     end
 
-    commits
+    commits.sort_by { |commit| DateTime.parse(commit.created_at) }
   end
 
   def construct_commit_url(repo_path, commit_hash)
