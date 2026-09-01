@@ -57,7 +57,7 @@ GEM
       pdf-core (~> 0.10.0)
       ttfunk (~> 1.8)
     public_suffix (7.0.5)
-    rack (3.2.6)
+    rack (3.2.7)
     rspec (3.13.2)
       rspec-core (~> 3.13.0)
       rspec-expectations (~> 3.13.0)
