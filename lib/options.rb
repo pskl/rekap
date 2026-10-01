@@ -47,8 +47,12 @@ class Options
         options[:repo4] = path
       end
 
-      opts.on('--email-author=EMAIL', 'Email address of commit author (for local mode)') do |email|
-        options[:email_author] = email
+      opts.on('--email-author=EMAILS', 'Comma-separated commit author emails (for local mode)') do |emails|
+        options[:email_author] = emails
+          .split(',')
+          .map(&:strip)
+          .reject(&:empty?)
+          .join(',')
       end
 
       opts.on('--title=TITLE', 'Custom title to use in PDF and filename (overrides project/repo name)') do |title|
@@ -75,7 +79,7 @@ class Options
     end
 
     if local_params
-      unless options[:repo1] && options[:email_author]
+      unless options[:repo1] && options[:email_author] && !options[:email_author].empty?
         puts "Error: Local mode requires --repo1 and --email-author"
         exit 1
       end

@@ -7,6 +7,17 @@ RSpec.describe GitService do
   let(:month) { 6 }
 
   describe '#fetch_commits' do
+    it 'checks every configured author email' do
+      service = GitService.new('work@example.com,personal@example.com')
+      expect(Open3).to receive(:capture3).with(
+        'git', '-C', repo_path, 'log', '--branches',
+        '--author=work@example.com', '--author=personal@example.com',
+        '--format=%H|%s|%aI'
+      ).and_return(['', '', double(success?: true)])
+
+      service.send(:fetch_commits, repo_path, month, 2025)
+    end
+
     it 'parses git log output correctly' do
       git_output = "abc1234567890|Initial commit|2025-06-15T10:00:00Z\ndef5678901234|Fix bug|2025-06-20T14:30:00Z\n"
       allow(Open3).to receive(:capture3).and_return([git_output, '', double(success?: true)])
@@ -140,6 +151,17 @@ RSpec.describe GitService do
   end
 
   describe '#extract_author_name' do
+    it 'looks up the author name using every configured email' do
+      service = GitService.new('work@example.com,personal@example.com')
+      expect(Open3).to receive(:capture3).with(
+        'git', '-C', repo_path, 'log',
+        '--author=work@example.com', '--author=personal@example.com',
+        '-1', '--format=%an'
+      ).and_return(['John Doe', '', double(success?: true)])
+
+      expect(service.extract_author_name(repo_path)).to eq('John Doe')
+    end
+
     it 'extracts name from git log' do
       allow(Open3).to receive(:capture3).and_return(['John Doe', '', double(success?: true)])
 

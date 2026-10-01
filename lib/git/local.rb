@@ -6,7 +6,7 @@ class GitService
   Commit = Struct.new(:number, :title, :html_url, :created_at, :closed_at, keyword_init: true)
 
   def initialize(email_author)
-    @email_author = email_author
+    @email_authors = email_author.split(',').map(&:strip).reject(&:empty?)
   end
 
   def fetch_repo_data(repo1_path, repo2_path, month_num, repo3_path = nil, repo4_path = nil)
@@ -78,14 +78,14 @@ class GitService
   def extract_author_name(repo_path)
     stdout, stderr, status = Open3.capture3(
       'git', '-C', repo_path, 'log',
-      "--author=#{@email_author}",
+      *author_filters,
       '-1', '--format=%an'
     )
 
     if status.success? && !stdout.strip.empty?
       stdout.strip
     else
-      @email_author.split('@').first
+      @email_authors.first.split('@').first
     end
   end
 
@@ -98,7 +98,7 @@ class GitService
     stdout, stderr, status = Open3.capture3(
       'git', '-C', repo_path, 'log',
       '--branches',
-      "--author=#{@email_author}",
+      *author_filters,
       '--format=%H|%s|%aI'
     )
 
@@ -123,6 +123,10 @@ class GitService
     end
 
     commits.sort_by { |commit| DateTime.parse(commit.created_at) }
+  end
+
+  def author_filters
+    @email_authors.map { |email| "--author=#{email}" }
   end
 
   def construct_commit_url(repo_path, commit_hash)

@@ -42,3 +42,9 @@ Up to four repositories can be included. The third and fourth repositories are r
 ```bash
 bundle exec ruby main.rb --repo1=/path/to/repo1 --repo2=/path/to/repo2 --repo3=/path/to/repo3 --repo4=/path/to/repo4 --email-author=you@example.com
 ```
+
+To include commits made with multiple email addresses, pass them as a comma-separated list. Every address is checked in every repository:
+
+```bash
+bundle exec ruby main.rb --repo1=/path/to/repo --email-author=work@example.com,personal@example.com
+```

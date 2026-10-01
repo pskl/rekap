@@ -31,5 +31,16 @@ RSpec.describe Options do
         repo4: '/path/to/repo4'
       )
     end
+
+    it 'accepts and normalizes comma-separated author emails' do
+      ARGV.replace([
+        '--repo1=/path/to/repo',
+        '--email-author=work@example.com, personal@example.com'
+      ])
+
+      options = described_class.parse
+
+      expect(options[:email_author]).to eq('work@example.com,personal@example.com')
+    end
   end
 end
