@@ -41,19 +41,18 @@ def main
     )
   else
     git_service = GitService.new(options[:email_author])
-    data = git_service.fetch_repo_data(options[:repo1], options[:repo2], month)
+    data = git_service.fetch_repo_data(
+      options[:repo1], options[:repo2], month, options[:repo3], options[:repo4]
+    )
     contributor_name = git_service.extract_author_name(options[:repo1])
 
     repo_name = if options[:title]
       options[:title]
     else
-      repo1_name = File.basename(File.expand_path(options[:repo1]))
-      if options[:repo2]
-        repo2_name = File.basename(File.expand_path(options[:repo2]))
-        "#{repo1_name}_#{repo2_name}"
-      else
-        repo1_name
-      end
+      options.values_at(:repo1, :repo2, :repo3, :repo4)
+        .compact
+        .map { |path| File.basename(File.expand_path(path)) }
+        .join('_')
     end
 
     generate_pdf(

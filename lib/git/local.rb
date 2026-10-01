@@ -9,10 +9,38 @@ class GitService
     @email_author = email_author
   end
 
-  def fetch_repo_data(repo1_path, repo2_path, month_num)
+  def fetch_repo_data(repo1_path, repo2_path, month_num, repo3_path = nil, repo4_path = nil)
     current_year = Date.today.year
     target_month = month_num
     target_year = current_year
+
+    if repo3_path || repo4_path
+      sections = [repo1_path, repo2_path, repo3_path, repo4_path].map do |repo_path|
+        next unless repo_path
+
+        commits = fetch_commits(repo_path, target_month, target_year)
+        repo_name = File.basename(File.expand_path(repo_path))
+        {
+          title: "> #{repo_name} commits (#{commits.count})",
+          items: commits
+        }
+      end
+      sections = sections.each_slice(2).flat_map do |row|
+        sorted_row = row.compact
+          .each_with_index
+          .sort_by { |(section, index)| [-section[:items].count, index] }
+          .map(&:first)
+        sorted_row + Array.new(2 - sorted_row.length)
+      end
+
+      return {
+        sections: sections,
+        pull_requests: sections[0][:items],
+        issues: sections[1]&.fetch(:items, []) || [],
+        pr_title: sections[0][:title],
+        issue_title: sections[1]&.fetch(:title, nil)
+      }
+    end
 
     repo1_commits = fetch_commits(repo1_path, target_month, target_year)
     repo1_name = File.basename(File.expand_path(repo1_path))

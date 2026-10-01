@@ -36,3 +36,9 @@ Optionally report on two repositories (if you worked on two repositories for ins
 ```bash
 bundle exec ruby main.rb --repo1=/path/to/repo1 --repo2=/path/to/repo2 --email-author=you@example.com
 ```
+
+Up to four repositories can be included. The third and fourth repositories are rendered on a second row below the first two:
+
+```bash
+bundle exec ruby main.rb --repo1=/path/to/repo1 --repo2=/path/to/repo2 --repo3=/path/to/repo3 --repo4=/path/to/repo4 --email-author=you@example.com
+```

@@ -95,6 +95,11 @@ class PdfGenerator
     half_width = pdf.bounds.width * 0.5
     top = pdf.cursor
 
+    if @data[:sections]
+      render_section_rows(pdf, @data[:sections], half_width, default_spacing)
+      return
+    end
+
     sections = [
       { title: @data[:pr_title] || "> pull requests opened (#{@data[:pull_requests].count})", items: @data[:pull_requests] },
       { title: @data[:issue_title] || "> tickets processed (#{@data[:issues].count})", items: @data[:issues] }
@@ -112,6 +117,50 @@ class PdfGenerator
     render_column(pdf, right_data, half_width + default_spacing * 2, half_width, pdf.cursor, default_spacing, true)
   end
 
+  def render_section_rows(pdf, sections, half_width, default_spacing)
+    rows = sections.each_slice(2).to_a
+
+    rows.each_with_index do |row, row_index|
+      start_page = pdf.page_number
+      top = pdf.cursor
+      positions = []
+
+      if row[0]
+        positions << render_column(pdf, row[0], 0, half_width, top, default_spacing)
+      end
+
+      if row[1]
+        pdf.go_to_page(start_page)
+        pdf.move_cursor_to(top)
+        positions << render_column(
+          pdf, row[1], half_width + default_spacing * 2, half_width,
+          pdf.cursor, default_spacing, true
+        )
+      end
+
+      next if row_index == rows.count - 1
+
+      move_below_row(pdf, positions, default_spacing)
+    end
+  end
+
+  def move_below_row(pdf, positions, default_spacing)
+    last_page = positions.map { |position| position[:page] }.max
+    lowest_cursor = positions
+      .select { |position| position[:page] == last_page }
+      .map { |position| position[:cursor] }
+      .min
+
+    pdf.go_to_page(last_page)
+    pdf.move_cursor_to(lowest_cursor)
+
+    if pdf.cursor < default_spacing * 8
+      pdf.start_new_page
+    else
+      pdf.move_down default_spacing * 2
+    end
+  end
+
   def render_column(pdf, column_data, x_position, width, top_position, default_spacing, is_right_column = false)
     offset = pdf.bounds.height - top_position
     margin_bottom = pdf.bounds.absolute_bottom
@@ -126,6 +175,7 @@ class PdfGenerator
         render_item(pdf, item, default_spacing, is_right_column)
       end
     end
+    { page: pdf.page_number, cursor: pdf.cursor }
   end
 
   def item_height(pdf, item, default_spacing)

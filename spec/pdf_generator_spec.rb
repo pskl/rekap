@@ -52,6 +52,7 @@ RSpec.describe PdfGenerator do
         allow(pdf).to receive(:text)
         allow(pdf).to receive(:move_down)
         allow(pdf).to receive(:cursor).and_return(500)
+        allow(pdf).to receive(:page_number).and_return(1)
         allow(pdf).to receive(:bounds).and_return(double(width: 600, height: 800, absolute_bottom: 0))
         allow(pdf).to receive(:bounding_box)
         allow(pdf).to receive(:go_to_page)
@@ -172,6 +173,50 @@ RSpec.describe PdfGenerator do
       it 'returns false' do
         expect(generator.send(:local_mode?)).to be false
       end
+    end
+  end
+
+  describe '#render_section_rows' do
+    let(:mode) { 'local' }
+    let(:sections) do
+      (1..4).map { |number| { title: "repo#{number}", items: [] } }
+    end
+    let(:pdf) do
+      double(
+        'pdf',
+        page_number: 1,
+        cursor: 500,
+        go_to_page: nil,
+        move_cursor_to: nil
+      )
+    end
+
+    it 'renders repositories 1-2 on the first row and 3-4 on the second row' do
+      rendered_columns = []
+      allow(generator).to receive(:render_column) do |_pdf, section, x_position, _width, _top, _spacing, is_right = false|
+        rendered_columns << [section[:title], x_position, is_right]
+        { page: 1, cursor: 400 }
+      end
+      allow(generator).to receive(:move_below_row)
+
+      generator.send(:render_section_rows, pdf, sections, 300, 5)
+
+      expect(rendered_columns).to eq([
+        ['repo1', 0, false],
+        ['repo2', 310, true],
+        ['repo3', 0, false],
+        ['repo4', 310, true]
+      ])
+      expect(generator).to have_received(:move_below_row).once
+    end
+
+    it 'keeps the second row on the same page when there is enough room' do
+      pdf = Prawn::Document.new(margin: 15)
+      spacing = pdf.font_size / 2.2
+
+      generator.send(:render_section_rows, pdf, sections, pdf.bounds.width * 0.5, spacing)
+
+      expect(pdf.page_count).to eq(1)
     end
   end
 

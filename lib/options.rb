@@ -39,6 +39,14 @@ class Options
         options[:repo2] = path
       end
 
+      opts.on('--repo3=PATH', 'Path to third local git repository (optional)') do |path|
+        options[:repo3] = path
+      end
+
+      opts.on('--repo4=PATH', 'Path to fourth local git repository (optional)') do |path|
+        options[:repo4] = path
+      end
+
       opts.on('--email-author=EMAIL', 'Email address of commit author (for local mode)') do |email|
         options[:email_author] = email
       end
@@ -58,7 +66,7 @@ class Options
 
     end.parse!
 
-    local_params = options[:repo1] || options[:email_author]
+    local_params = options.values_at(:repo1, :repo2, :repo3, :repo4, :email_author).any?
     github_params = options[:project_name] || options[:gh_token]
 
     if local_params && github_params

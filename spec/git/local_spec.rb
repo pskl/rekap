@@ -104,6 +104,39 @@ RSpec.describe GitService do
         expect(data[:issue_title]).to eq('> repo2 commits (1)')
       end
     end
+
+    context 'with four repos' do
+      it 'puts the repository with the most commits on the left of each row' do
+        repo_paths = (1..4).map { |number| "/path/to/repo#{number}" }
+        commits = {
+          repo_paths[0] => [double(number: 1)],
+          repo_paths[1] => [double(number: 2), double(number: 3)],
+          repo_paths[2] => [double(number: 4)],
+          repo_paths[3] => [double(number: 5), double(number: 6), double(number: 7)]
+        }
+
+        commits.each do |path, repo_commits|
+          allow(service).to receive(:fetch_commits).with(path, month, anything).and_return(repo_commits)
+        end
+
+        data = service.fetch_repo_data(
+          repo_paths[0], repo_paths[1], month, repo_paths[2], repo_paths[3]
+        )
+
+        expect(data[:sections].map { |section| section[:title] }).to eq([
+          '> repo2 commits (2)',
+          '> repo1 commits (1)',
+          '> repo4 commits (3)',
+          '> repo3 commits (1)',
+        ])
+        expect(data[:sections].map { |section| section[:items] }).to eq([
+          commits[repo_paths[1]],
+          commits[repo_paths[0]],
+          commits[repo_paths[3]],
+          commits[repo_paths[2]]
+        ])
+      end
+    end
   end
 
   describe '#extract_author_name' do
