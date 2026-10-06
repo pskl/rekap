@@ -59,6 +59,8 @@ RSpec.describe PdfGenerator do
         allow(pdf).to receive(:move_cursor_to)
         allow(pdf).to receive(:line_width=)
         allow(pdf).to receive(:stroke_horizontal_rule)
+        allow(pdf).to receive(:save_graphics_state).and_yield
+        allow(pdf).to receive(:fill_color)
       end
     end
 

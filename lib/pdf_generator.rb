@@ -1,16 +1,15 @@
 require 'prawn'
 require 'date'
 require_relative 'histogram'
+require_relative 'pdf_style'
+require_relative 'ticket_agenda'
 require_relative 'utils'
 
 class PdfGenerator
+  include PdfStyle
+
   MODE_GITHUB = "github"
   MODE_LOCAL = "local"
-
-  DEFAULT_FONT_SIZE = 12
-  DEFAULT_TITLE_SIZE = 13
-  DEFAULT_SUBTITLE_SIZE = 9
-  MAX_RULER_SIZE = 3
 
   def initialize(repo_name, contributor_name, data, output_path, font_path, days_off, days_on, month_num, mode)
     @repo_name = repo_name
@@ -22,6 +21,7 @@ class PdfGenerator
     @days_on = days_on
     @month_num = month_num
     @mode = mode
+    @ticket_agenda = TicketAgenda.new(data)
   end
 
   def generate
@@ -43,6 +43,7 @@ class PdfGenerator
       render_header(pdf, title, business_days)
       render_histogram(pdf, business_days, month)
       render_columns(pdf)
+      @ticket_agenda.render(pdf, business_days) if @ticket_agenda.present?
     end
 
     puts "-> rekap generated: #{file_name}"
@@ -67,10 +68,12 @@ class PdfGenerator
   def render_header(pdf, title, business_days)
     default_spacing = pdf.font_size / 2.2
 
-    pdf.text "> #{title} (#{business_days.length} days or #{business_days.length * 8}h):", size: DEFAULT_TITLE_SIZE
+    with_title_style(pdf) do
+      pdf.text "> #{title} (#{business_days.length} days or #{business_days.length * 8}h):", size: TITLE_FONT_SIZE
+    end
     pdf.move_down default_spacing * 0.6
 
-    pdf.font_size DEFAULT_SUBTITLE_SIZE do
+    pdf.font_size SUBTITLE_FONT_SIZE do
       generation_date = Time.now.strftime("%Y-%m-%d")
       if github_mode?
         pdf.text "Generated on #{generation_date}. All PR and ticket titles are clickable links to their respective GitHub pages."
@@ -109,12 +112,17 @@ class PdfGenerator
 
     left_data, right_data = sections
 
-    render_column(pdf, left_data, 0, half_width, pdf.cursor, default_spacing)
+    positions = []
+    positions << render_column(pdf, left_data, 0, half_width, pdf.cursor, default_spacing)
 
     pdf.go_to_page(1)
     pdf.move_cursor_to(top)
 
-    render_column(pdf, right_data, half_width + default_spacing * 2, half_width, pdf.cursor, default_spacing, true)
+    positions << render_column(
+      pdf, right_data, half_width + default_spacing * 2, half_width,
+      pdf.cursor, default_spacing, true
+    )
+    move_to_content_end(pdf, positions)
   end
 
   def render_section_rows(pdf, sections, half_width, default_spacing)
@@ -138,21 +146,16 @@ class PdfGenerator
         )
       end
 
-      next if row_index == rows.count - 1
-
-      move_below_row(pdf, positions, default_spacing)
+      if row_index == rows.count - 1
+        move_to_content_end(pdf, positions)
+      else
+        move_below_row(pdf, positions, default_spacing)
+      end
     end
   end
 
   def move_below_row(pdf, positions, default_spacing)
-    last_page = positions.map { |position| position[:page] }.max
-    lowest_cursor = positions
-      .select { |position| position[:page] == last_page }
-      .map { |position| position[:cursor] }
-      .min
-
-    pdf.go_to_page(last_page)
-    pdf.move_cursor_to(lowest_cursor)
+    move_to_content_end(pdf, positions)
 
     if pdf.cursor < default_spacing * 8
       pdf.start_new_page
@@ -161,12 +164,25 @@ class PdfGenerator
     end
   end
 
+  def move_to_content_end(pdf, positions)
+    last_page = positions.map { |position| position[:page] }.max
+    lowest_cursor = positions
+      .select { |position| position[:page] == last_page }
+      .map { |position| position[:cursor] }
+      .min
+
+    pdf.go_to_page(last_page)
+    pdf.move_cursor_to(lowest_cursor)
+  end
+
   def render_column(pdf, column_data, x_position, width, top_position, default_spacing, is_right_column = false)
     offset = pdf.bounds.height - top_position
     margin_bottom = pdf.bounds.absolute_bottom
     pdf.bounding_box([x_position, pdf.bounds.height], width: width) do
       pdf.move_down offset
-      pdf.text column_data[:title], size: pdf.font_size * 1.2
+      with_title_style(pdf) do
+        pdf.text column_data[:title], size: TITLE_FONT_SIZE
+      end
       ruler(MAX_RULER_SIZE * 0.375, pdf)
       pdf.move_down default_spacing / 2
 
@@ -235,4 +251,5 @@ class PdfGenerator
   def local_mode?
     @mode == MODE_LOCAL
   end
+
 end

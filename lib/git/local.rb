@@ -3,6 +3,8 @@ require 'open3'
 require 'shellwords'
 
 class GitService
+  TICKET_ID_PATTERN = /\b[A-Z]+-\d+\b/
+
   Commit = Struct.new(:number, :title, :html_url, :created_at, :closed_at, keyword_init: true)
 
   def initialize(email_author)
@@ -33,13 +35,13 @@ class GitService
         sorted_row + Array.new(2 - sorted_row.length)
       end
 
-      return {
+      return add_ticket_evidence({
         sections: sections,
         pull_requests: sections[0][:items],
         issues: sections[1]&.fetch(:items, []) || [],
         pr_title: sections[0][:title],
         issue_title: sections[1]&.fetch(:title, nil)
-      }
+      }, [repo1_path, repo2_path, repo3_path, repo4_path])
     end
 
     repo1_commits = fetch_commits(repo1_path, target_month, target_year)
@@ -56,22 +58,22 @@ class GitService
       left_name, left_commits = left
       right_name, right_commits = right
 
-      {
+      add_ticket_evidence({
         pull_requests: left_commits,
         issues: right_commits,
         pr_title: "> #{left_name} commits (#{left_commits.count})",
         issue_title: "> #{right_name} commits (#{right_commits.count})"
-      }
+      }, [repo1_path, repo2_path])
     else
       mid = (repo1_commits.length / 2.0).ceil
       left_commits = repo1_commits[0...mid]
       right_commits = repo1_commits[mid..-1] || []
-      {
+      add_ticket_evidence({
         pull_requests: left_commits,
         issues: right_commits,
         pr_title: "> #{repo1_name} commits (#{left_commits.count})",
         issue_title: "> #{repo1_name} commits continued (#{right_commits.count})"
-      }
+      }, [repo1_path])
     end
   end
 
@@ -90,6 +92,29 @@ class GitService
   end
 
   private
+
+  def add_ticket_evidence(data, repo_paths)
+    evidence = repo_paths.compact.flat_map { |repo_path| fetch_branch_ticket_evidence(repo_path) }
+    data.merge(ticket_evidence: evidence)
+  end
+
+  def fetch_branch_ticket_evidence(repo_path)
+    stdout, _, status = Open3.capture3(
+      'git', '-C', repo_path, 'for-each-ref',
+      '--format=%(refname:short)|%(committerdate:iso8601-strict)',
+      'refs/heads', 'refs/remotes'
+    )
+    return [] unless status.success?
+
+    stdout.lines.flat_map do |line|
+      branch_name, occurred_at = line.strip.split('|', 2)
+      next [] unless occurred_at
+
+      branch_name.scan(TICKET_ID_PATTERN).uniq.map do |ticket_id|
+        { ticket_id: ticket_id, occurred_at: occurred_at }
+      end
+    end
+  end
 
   def fetch_commits(repo_path, target_month, target_year)
     start_date = Date.new(target_year, target_month, 1)

@@ -148,6 +148,30 @@ RSpec.describe GitService do
         ])
       end
     end
+
+    context 'with Jira ticket IDs in branch names' do
+      it 'extracts ticket IDs and dates from local and remote branch names' do
+        allow(service).to receive(:fetch_commits).and_return([])
+        expect(Open3).to receive(:capture3).with(
+          'git', '-C', repo_path, 'for-each-ref',
+          '--format=%(refname:short)|%(committerdate:iso8601-strict)',
+          'refs/heads', 'refs/remotes'
+        ).and_return([
+          "feat/PROJECT-123-add-export|2025-06-12T14:30:00+02:00\n" \
+          "origin/fix/SERVICE-456|2025-06-18T09:15:00+02:00\n" \
+          "main|2025-06-20T10:00:00+02:00\n",
+          '',
+          double(success?: true)
+        ])
+
+        data = service.fetch_repo_data(repo_path, nil, month)
+
+        expect(data[:ticket_evidence]).to eq([
+          { ticket_id: 'PROJECT-123', occurred_at: '2025-06-12T14:30:00+02:00' },
+          { ticket_id: 'SERVICE-456', occurred_at: '2025-06-18T09:15:00+02:00' }
+        ])
+      end
+    end
   end
 
   describe '#extract_author_name' do
